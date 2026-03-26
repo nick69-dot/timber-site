@@ -1,0 +1,204 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model for customers and sellers
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  role      String   @default("customer") // customer, seller, admin
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  orders    Order[]
+  cartItems CartItem[]
+  enquiries Enquiry[]
+}
+
+// Timber Category (Teak, Sal, Sheesham, etc.)
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  products Product[]
+}
+
+// Timber Product
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  
+  // Timber specific fields
+  woodType      String   // Teak, Sal, Sheesham, Mango, etc.
+  grade         String   // A Grade, B Grade, Commercial, Premium
+  origin        String   // Indian, Myanmar, African, etc.
+  
+  // Dimensions and pricing
+  length        Float    // in feet
+  breadth       Float    // in inches
+  thickness     Float    // in inches
+  pricePerCft   Float    // price per cubic foot in INR
+  pricePerPiece Float?   // price per piece in INR
+  
+  // Stock and availability
+  stock         Int      @default(0)
+  minOrder      Int      @default(1) // minimum order quantity
+  unit          String   @default("cft") // cft, piece, lot
+  
+  // Additional info
+  moisture      String?  // moisture content percentage
+  finish        String?  // Rough, Smooth, Polished
+  certification String?  // FSC, PEFC, etc.
+  images        String?  // JSON array of image URLs
+  
+  features      String?  // JSON array of features
+  specifications String? // JSON object of specifications
+  
+  isActive      Boolean  @default(true)
+  isFeatured    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+}
+
+// Shopping Cart
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String?
+  sessionId String?  // for guest users
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+// Order
+model Order {
+  id              String   @id @default(cuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  
+  // Order details
+  orderNumber     String   @unique
+  status          String   @default("pending") // pending, confirmed, processing, shipped, delivered, cancelled
+  
+  // Pricing
+  subtotal        Float    // before tax
+  gstAmount       Float    // GST amount (18% for timber)
+  deliveryCharges Float    @default(0)
+  totalAmount     Float    // final amount
+  
+  // Delivery address
+  customerName    String
+  customerPhone   String
+  customerEmail   String
+  shippingAddress String
+  shippingCity    String
+  shippingState   String
+  shippingPincode String
+  
+  // Additional info
+  notes           String?
+  paymentMethod   String   @default("cod") // cod, upi, bank_transfer
+  paymentStatus   String   @default("pending") // pending, paid, failed, refunded
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  items OrderItem[]
+}
+
+// Order Items
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id])
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  
+  productName String
+  woodType    String
+  grade       String
+  
+  quantity    Int
+  pricePerUnit Float
+  totalPrice  Float
+  
+  createdAt   DateTime @default(now())
+}
+
+// Enquiry for bulk orders
+model Enquiry {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  name        String
+  email       String
+  phone       String
+  company     String?
+  
+  // Enquiry details
+  subject     String
+  message     String
+  woodType    String?
+  quantity    String?
+  requirements String? // JSON for specific requirements
+  
+  status      String   @default("new") // new, contacted, quoted, closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Contact/Support messages
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+// Testimonials
+model Testimonial {
+  id           String   @id @default(cuid())
+  customerName String
+  customerRole String?
+  company      String?
+  rating       Int      // 1-5
+  review       String
+  avatar       String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
